@@ -10,6 +10,8 @@ Threads:
 #include <boost/asio.hpp>
 
 #include <iostream>
+#include <cctype> // input validation functions
+
 #include <memory>
 #include <thread>
 #include <mutex>
@@ -180,6 +182,7 @@ private:
 // ----------------------------------------------------------------------
 // Input
 // ----------------------------------------------------------------------
+
 class InputManager {
     enum Commands {
         EXIT = 0,
@@ -220,10 +223,7 @@ public:
                     break;
                 }
                 case SET_HOSTNAME: {
-                    std::string hostname_input;
-                    std::cout << "> Enter new hostname: ";
-                    std::cin >> hostname_input;
-                    std::cout << "> Hostname set to: " << hostname_input << "\n\n";
+                    std::string hostname_input = get_hostname();
                     m_resolver.set_hostname(hostname_input);
                     break;
                 }
@@ -236,6 +236,7 @@ public:
                     break;
                 }
                 case RESOLVE_DNS: {
+                    // Resolver::resolve_dns will start an asynchronous resolve operation
                     if (m_resolver.resolve_dns())
                     {
                         // Wait until the I/O thread has output results to console with `cout`
@@ -275,6 +276,71 @@ private:
             "2 - Set port number\n"
             "3 - Resolver DNS\n"
             "9 - Show commands\n\n";
+    }
+
+    // Gets hostname and performs some input validation
+    std::string get_hostname() 
+    {
+        const unsigned int MINIMUM_CHARACTER_COUNT = 3;
+
+        std::string hostname;
+        std::cin.clear();   // clear state flags, set goodbit
+        std::cin.ignore();  // remove newline character if present
+
+        do {
+            // Get hostname from user
+            std::cout << "Enter a new hostname: ";
+            std::getline(std::cin, hostname, '\n');
+
+            // Check if hostname string is empty
+            if (hostname.empty()) {
+                std::cout << "\t> hostname cannot be empty.\n";
+                continue;
+            }
+
+            // Input validation
+            bool rejected = false;
+            unsigned short period_count = 0;
+            unsigned int character_count = 0;
+
+            for (std::size_t i = 0; i < hostname.length(); ++i) 
+            {
+                // Continue if character is a letter or number
+                if (std::isalpha(hostname[i]) || std::isdigit(hostname[i])) {
+                    ++character_count;
+                    continue;
+                }
+                else if (hostname[i] == '.') {
+                    ++period_count;
+                    continue;
+                }
+                else {
+                    // Hostname contains a non-alphanumeric character
+                    rejected = true;
+                    std::cout << "\t> hostname must contain only periods and alphanumeric characters.\n";
+                    break;
+                }
+            }
+
+            // Verify that the hostname as more than 3 characters
+            if (character_count < MINIMUM_CHARACTER_COUNT) {
+                rejected = true;
+                std::cout << "\t> hostname must contain more than " << MINIMUM_CHARACTER_COUNT  
+                    << " characters.\n";
+            }
+
+            // Verify number of periods (Hostnames are allowed more than 1 period)
+            if (period_count == 0) {
+                rejected = true;
+                std::cout << "\t> hostname must contain a period (.) character.\n";
+            }
+
+            if (!rejected)
+                break;
+        } while (true);
+
+        std::cout << "\t> Hostname set to: " << hostname << "\n\n";
+        return hostname;
     }
 
 private:
