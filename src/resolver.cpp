@@ -141,16 +141,16 @@ private:
         asio::ip::tcp::resolver::iterator it_end;
         unsigned int index = 0;
 
-        std::cout << std::endl 
-                  << m_hostname << ":" << std::endl
+        std::cout << "\n\t" 
+                  << m_hostname << ":" << "\n\t"
                   << std::string(m_hostname.size()+1 , '-')
                   << std::endl;
 
         std::for_each(it, it_end, [this, &index](asio::ip::tcp::endpoint ep) {
-            std::cout << "Endpoint " << index << ": "
+            std::cout << "\tEndpoint " << index << ": "
                       << ep.address() << " "
                       << (ep.address().is_v4() ? "(IPv4)" : "(IPv6)")
-                      << std::endl;
+                      << '\n';
             
             ++index;
         });
@@ -228,10 +228,7 @@ public:
                     break;
                 }
                 case SET_PORT: {
-                    unsigned short port_input = 0;
-                    std::cout << "> Enter new port number: ";
-                    std::cin >> port_input;
-                    std::cout << "> Port number set to: " << port_input << "\n\n";
+                    unsigned short port_input = static_cast<unsigned short>(get_port_number());
                     m_resolver.set_port_number(port_input);
                     break;
                 }
@@ -271,14 +268,14 @@ private:
     }
 
     void display_commands() {
-        std::cout << "\n0 - Exit\n"
-            "1 - Set hostname\n"
-            "2 - Set port number\n"
-            "3 - Resolver DNS\n"
-            "9 - Show commands\n\n";
+        std::cout << "\n\t0 - Exit\n"
+            "\t1 - Set hostname\n"
+            "\t2 - Set port number\n"
+            "\t3 - Resolver DNS\n"
+            "\t9 - Show commands\n\n";
     }
 
-    // Gets hostname and performs some input validation
+    // Gets a hostname and performs some input validation
     std::string get_hostname() 
     {
         const unsigned int MINIMUM_CHARACTER_COUNT = 3;
@@ -341,6 +338,56 @@ private:
 
         std::cout << "\t> Hostname set to: " << hostname << "\n\n";
         return hostname;
+    }
+
+    // Gets a port number and performs some input validation
+    short get_port_number()
+    {
+        std::cin.clear();   // clear state flags and set goodbit
+        std::cin.ignore();  // remove newline character if present
+
+        short port_number;
+
+        do {
+            std::cout << "Enter a new port number: ";
+            std::cin >> port_number;
+
+            // If failbit is set, no extraction took place
+            if (std::cin.fail()) 
+            {    
+                // Clear state bits and set goodbit (cannot use cin if failbit is set)
+                std::cin.clear();
+
+                // Remove bad input from stream (ignores up to whitespace)
+                std::cin.ignore(INT_MAX, '\n');
+                
+                std::cout << "\t> Invalid port number: Could not extract an integer.\n";
+                continue;
+            }
+            
+            // Check if extra data is still in the stream after reading an initial number.
+            std::cin.ignore(INT_MAX, '\n'); // clear out any additional input from stream
+            
+            // If stream ignored more than 1 character, consider this invalid
+            if (std::cin.gcount() > 1) {
+                std::cout << "\t> Invalid port number: Extra data found in stream ("
+                    << std::cin.gcount() << " extra characters).\n";
+                continue;
+            }
+
+            // Check that port number is a positive integer
+            if (port_number <= 0) {
+                std::cout << "\t> Invalid port number: Value must be greater than zero.\n";
+                continue;
+            }
+
+            break;
+
+        } while (true);
+
+        std::cout << "\t> Port number set to: " << port_number << "\n\n";
+
+        return port_number;
     }
 
 private:
