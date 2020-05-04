@@ -1,6 +1,8 @@
 /*
 Boost.Asio application that resolves a DNS hostname to its public IP addresses.
 Uses a mutex and condition variable to synchronize the "UI thread" and "I/O thread".
+Validates hostname and port number input using functions in cctype, and input stream behaviour.
+
 Threads:
     - UI thread:         Handles user input.
     - I/O thread:        Resolves a DNS name asynchronously.
